@@ -1,0 +1,8 @@
+packages:
+  - '.'
+
+# Match the upstream example: these optional scripts are not required by Vite.
+allowBuilds:
+  msw: false
+  sharp: false
+  unrs-resolver: false

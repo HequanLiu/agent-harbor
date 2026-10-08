@@ -1,0 +1,20 @@
+[package]
+name = "agent-harbor"
+version = "0.1.0"
+description = "AgentHarbor desktop client"
+edition = "2021"
+rust-version = "1.77.2"
+
+[build-dependencies]
+tauri-build = { version = "2.6", features = [] }
+
+[dependencies]
+serde_json = "1"
+tauri = { version = "2.11", features = [] }
+tauri-plugin-http = { version = "2.8", features = ["cookies", "stream"] }
+tauri-plugin-dialog = "2.7"
+tauri-plugin-fs = "2.5"
+
+[profile.release]
+codegen-units = 16
+strip = true

@@ -1,0 +1,2 @@
+# Preserve the vendored snapshot and its byte-level provenance manifest.
+vendor/agentscope/** -text -whitespace

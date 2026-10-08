@@ -1,0 +1,25 @@
+.venv/
+node_modules/
+dist/
+data/
+.env
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+*.tsbuildinfo
+.runtime/
+test-results/
+playwright-report/
+
+/apps/web/src-tauri/target/
+/apps/web/src-tauri/gen/
+
+# Local configuration and installer outputs
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.agent-harbor-created

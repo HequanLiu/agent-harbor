@@ -1,0 +1,12 @@
+{
+  "runtime": "packaged Tauri Windows WebView2",
+  "origin": "http://tauri.localhost/#/chat",
+  "registration_login_logout": true,
+  "tenant_switch_isolation": true,
+  "native_cookie_jar": true,
+  "native_chat_sse": true,
+  "native_multipart_skill_upload": true,
+  "insecure_remote_http_denied": true,
+  "provider": "local fixture; no paid model",
+  "page_errors": []
+}

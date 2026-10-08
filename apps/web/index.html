@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="icon" type="image/svg+xml" href="/harbor.svg" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>AgentHarbor · 智港</title>
+		<script>
+			// Applied before the first paint, so the theme never flashes.
+			const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
+			const applyTheme = () =>
+				document.documentElement.classList.toggle('dark', darkQuery.matches);
+			applyTheme();
+			darkQuery.addEventListener('change', applyTheme);
+		</script>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="/src/main.tsx"></script>
+	</body>
+</html>
