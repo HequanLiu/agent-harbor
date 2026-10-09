@@ -1,5 +1,7 @@
 {
 	"common": {
+		"switchToLight": "切换为亮色主题",
+		"switchToDark": "切换为暗色主题",
 		"add": "添加",
 		"agent": "智能体",
 		"cancel": "取消",

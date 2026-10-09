@@ -61,12 +61,12 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
     finally { setBusy(false); }
   }
   return <main className="min-h-dvh bg-background text-foreground grid lg:grid-cols-2">
-    <section className="hidden lg:flex flex-col justify-between p-14 bg-slate-950 text-slate-50 relative overflow-hidden">
-      <div className="absolute size-[36rem] rounded-full border border-teal-400/15 -right-60 top-20" />
-      <div className="absolute size-[26rem] rounded-full border border-teal-400/15 -right-40 top-40" />
-      <div className="flex gap-3 items-center text-xl font-semibold"><Anchor className="text-teal-300" /> AgentHarbor <span className="text-slate-400 text-sm">智港</span></div>
-      <div className="relative max-w-lg"><p className="text-teal-300 text-xs tracking-[0.24em] mb-7">A HOME FOR YOUR AGENTS</p><h1 className="text-5xl font-semibold leading-snug tracking-tight">让每个团队，<br />拥有自己的<br /><span className="text-teal-300">智能体空间。</span></h1><p className="text-slate-400 mt-7 leading-7">连接模型、工具与知识。<br />从一次对话开始，让智能体走进日常工作。</p></div>
-      <div className="flex items-center gap-2 text-sm text-slate-400"><ShieldCheck size={17} /> 独立空间 · 持续记忆 · 自由扩展</div>
+    <section className="hidden lg:flex flex-col justify-between p-14 bg-linear-to-r from-teal-50/70 via-slate-50/60 to-background text-slate-900 dark:bg-none dark:bg-slate-950 dark:text-slate-50 relative overflow-hidden">
+      <div className="absolute size-[36rem] rounded-full border border-teal-700/8 dark:border-teal-400/15 -right-60 top-20" />
+      <div className="absolute size-[26rem] rounded-full border border-teal-700/8 dark:border-teal-400/15 -right-40 top-40" />
+      <div className="flex gap-3 items-center text-xl font-semibold"><Anchor className="text-teal-700 dark:text-teal-300" /> AgentHarbor <span className="text-slate-500 dark:text-slate-400 text-sm">智港</span></div>
+      <div className="relative max-w-lg lg:ml-6 xl:ml-10"><p className="text-teal-700 dark:text-teal-300 text-xs tracking-[0.24em] mb-7">A HOME FOR YOUR AGENTS</p><h1 className="text-4xl xl:text-5xl font-semibold leading-snug tracking-tight">把任务交给智能体，<br /><span className="text-teal-700 dark:text-teal-300">把时间留给创造。</span></h1><p className="text-slate-500 dark:text-slate-400 mt-7 leading-7">连接知识与工具，让工作更轻松。</p></div>
+      <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 lg:ml-6 xl:ml-10"><ShieldCheck size={17} /> 独立空间 · 持续记忆 · 自由扩展</div>
     </section>
     <section className="flex items-center justify-center p-6 sm:p-12"><div className="w-full max-w-sm">
       <div className="flex items-center gap-2 text-xl font-semibold mb-10 lg:hidden"><Anchor /> AgentHarbor · 智港</div>

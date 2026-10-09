@@ -1,3 +1,4 @@
+import { ThemeProvider } from 'next-themes';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -8,8 +9,10 @@ import { TooltipProvider } from '@/components/ui/tooltip.tsx';
 
 createRoot(document.getElementById('root')!).render(
 	<StrictMode>
-		<TooltipProvider>
-			<App />
-		</TooltipProvider>
+		<ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} storageKey="harbor-theme">
+			<TooltipProvider>
+				<App />
+			</TooltipProvider>
+		</ThemeProvider>
 	</StrictMode>,
 );
