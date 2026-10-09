@@ -9,6 +9,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import JSONResponse
+from starlette.middleware.cors import CORSMiddleware
 
 from .identity import IdentityStore
 
@@ -65,17 +66,34 @@ class AuthBoundary:
             return
         request = Request(scope)
         try:
+            path = scope['path']
             if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
                 origin = request.headers.get('origin')
-                if (origin and origin not in self.allowed_origins) or request.headers.get('sec-fetch-site') == 'cross-site':
+                # Explicitly trusted mobile Web origins may use a separate API host.
+                # Bearer requests never fall back to ambient cookies below. Keep
+                # cookie login/register and all cookie-authenticated writes protected.
+                mobile_request = path == '/harbor/auth/mobile/login' or (
+                    path not in {'/harbor/auth/login', '/harbor/auth/register'}
+                    and request.headers.get('authorization', '').lower().startswith('bearer ')
+                )
+                trusted_mobile = bool(origin and origin in self.allowed_origins and mobile_request)
+                if (origin and origin not in self.allowed_origins) or (
+                    request.headers.get('sec-fetch-site') == 'cross-site' and not trusted_mobile
+                ):
                     raise HTTPException(403, '不允许来自此来源的请求')
-            path = scope['path']
             public = {
                 ('GET', '/harbor/health'), ('GET', '/harbor/auth/status'),
                 ('POST', '/harbor/auth/login'), ('POST', '/harbor/auth/register'),
+                ('POST', '/harbor/auth/mobile/login'),
             }
             if (request.method, path) not in public:
-                principal = await run_in_threadpool(self.store.authenticate, request.cookies.get(COOKIE, ''))
+                token = request.cookies.get(COOKIE, '')
+                if 'authorization' in request.headers:
+                    scheme, _, token = request.headers['authorization'].partition(' ')
+                    if scheme.lower() != 'bearer' or not token or token != token.strip():
+                        raise HTTPException(401, '登录会话无效，请重新登录')
+                principal = await run_in_threadpool(self.store.authenticate, token)
+                scope.setdefault('state', {})['session_token'] = token
                 scope.setdefault('state', {})['principal'] = principal
                 if not path.startswith('/harbor/'):
                     tenant_id = request.headers.get('x-tenant-id') or principal['tenant_id']
@@ -149,19 +167,28 @@ def install_auth(app, database: Path, *, allowed_origins, registration_enabled=T
         throttle(request)
         return signed_in(response, *store.login(body.email, body.password))
 
+    @router.post('/auth/mobile/login')
+    def mobile_login(body: Login, request: Request, response: Response):
+        throttle(request)
+        token = store.new_session(*store.login(body.email, body.password))
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Pragma'] = 'no-cache'
+        return {'access_token': token, 'token_type': 'bearer', 'expires_in': 86400,
+                'identity': store.me(store.authenticate(token))}
+
     @router.get('/auth/me')
     def me(request: Request):
         return store.me(request.state.principal)
 
     @router.post('/auth/logout', status_code=204)
     def logout(request: Request, response: Response):
-        store.revoke(request.cookies.get(COOKIE, ''))
+        store.revoke(request.state.session_token)
         response.delete_cookie(COOKIE, path='/', secure=secure_cookie, httponly=True, samesite='strict')
 
     @router.post('/auth/switch-tenant')
     def switch(body: TenantSelection, request: Request):
-        store.switch(request.cookies.get(COOKIE, ''), request.state.principal['user_id'], body.tenant_id)
-        return store.me(store.authenticate(request.cookies.get(COOKIE, '')))
+        store.switch(request.state.session_token, request.state.principal['user_id'], body.tenant_id)
+        return store.me(store.authenticate(request.state.session_token))
 
     @router.post('/tenants', status_code=201)
     def create_tenant(body: TenantName, request: Request):
@@ -182,4 +209,8 @@ def install_auth(app, database: Path, *, allowed_origins, registration_enabled=T
 
     app.include_router(router)
     app.add_middleware(AuthBoundary, store=store, allowed_origins=allowed_origins)
+    app.add_middleware(CORSMiddleware, allow_origins=sorted(allowed_origins),
+                       allow_credentials=True,
+                       allow_methods=['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+                       allow_headers=['Authorization', 'Content-Type', 'X-Tenant-ID'])
     return store
