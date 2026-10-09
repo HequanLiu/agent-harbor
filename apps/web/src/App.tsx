@@ -2,7 +2,6 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Onborda, OnbordaProvider } from 'onborda';
 import { useEffect, useMemo, useState } from 'react';
 import { createBrowserRouter, createHashRouter, Navigate, RouterProvider } from 'react-router-dom';
-import { Toaster } from 'sonner';
 
 import { MCPHubPage } from './pages/mcp';
 import { SkillHubPage } from './pages/skill';
@@ -13,6 +12,7 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { HarborBar } from '@/components/layout/HarborBar';
 import { buildChatTour } from '@/components/tour/chatTourSteps';
 import { TourCard } from '@/components/tour/TourCard';
+import { Toaster } from '@/components/ui/sonner';
 import { HarborContext } from '@/context/HarborContext';
 import { UploadProvider } from '@/context/UploadContext';
 import { useTranslation } from '@/i18n/useI18n';

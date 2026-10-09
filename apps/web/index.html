@@ -7,11 +7,14 @@
 		<title>AgentHarbor · 智港</title>
 		<script>
 			// Applied before the first paint, so the theme never flashes.
-			const darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-			const applyTheme = () =>
-				document.documentElement.classList.toggle('dark', darkQuery.matches);
-			applyTheme();
-			darkQuery.addEventListener('change', applyTheme);
+			let theme = 'light';
+			try {
+				if (localStorage.getItem('harbor-theme') === 'dark') theme = 'dark';
+			} catch {
+				// Storage can be unavailable; keep the default light theme.
+			}
+			document.documentElement.classList.add(theme);
+			document.documentElement.style.colorScheme = theme;
 		</script>
 	</head>
 	<body>
