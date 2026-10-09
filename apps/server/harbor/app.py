@@ -15,6 +15,7 @@ from agentscope.rag import ApproxTokenChunker, QdrantStore
 
 from .auth import install_auth
 from .mobile import router as mobile_router
+from .sse import SSEHandshake
 from .workspaces import TenantWorkspaceManager
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -46,6 +47,7 @@ def create_harbor_app(data_dir=None):
         download_secret=secret_file.read_text(encoding='utf-8').strip(),
     )
     app.include_router(mobile_router)
+    app.add_middleware(SSEHandshake)
     install_auth(
         app, data / 'identity.sqlite3',
         allowed_origins=set(os.getenv('HARBOR_ALLOWED_ORIGINS', 'http://localhost:5177,http://127.0.0.1:5177,http://localhost:8081,http://127.0.0.1:8081,http://localhost:8017,http://127.0.0.1:8017,tauri://localhost,http://tauri.localhost,https://tauri.localhost').split(',')),
