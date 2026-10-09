@@ -14,6 +14,7 @@ from agentscope.middleware import AgenticMemoryMiddleware
 from agentscope.rag import ApproxTokenChunker, QdrantStore
 
 from .auth import install_auth
+from .mobile import router as mobile_router
 from .workspaces import TenantWorkspaceManager
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -44,9 +45,10 @@ def create_harbor_app(data_dir=None):
         extra_agent_middlewares=memory_factory,
         download_secret=secret_file.read_text(encoding='utf-8').strip(),
     )
+    app.include_router(mobile_router)
     install_auth(
         app, data / 'identity.sqlite3',
-        allowed_origins=set(os.getenv('HARBOR_ALLOWED_ORIGINS', 'http://localhost:5177,http://127.0.0.1:5177,http://localhost:8017,http://127.0.0.1:8017,tauri://localhost,http://tauri.localhost,https://tauri.localhost').split(',')),
+        allowed_origins=set(os.getenv('HARBOR_ALLOWED_ORIGINS', 'http://localhost:5177,http://127.0.0.1:5177,http://localhost:8081,http://127.0.0.1:8081,http://localhost:8017,http://127.0.0.1:8017,tauri://localhost,http://tauri.localhost,https://tauri.localhost').split(',')),
         registration_enabled=os.getenv('HARBOR_ALLOW_REGISTRATION', 'true').lower() == 'true',
         secure_cookie=os.getenv('HARBOR_SECURE_COOKIE', 'false').lower() == 'true',
     )
