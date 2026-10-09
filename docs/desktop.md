@@ -18,9 +18,15 @@ powershell -ExecutionPolicy Bypass -File scripts\desktop.ps1
 
 也可以运行 `apps\web\src-tauri\target\release\agent-harbor.exe`，或使用 `apps\web\src-tauri\target\release\bundle\nsis` 下的安装包。
 
-登录页默认连接 `http://127.0.0.1:8017/`。更改地址后点击“连接”，再登录。连接远程服务时使用 HTTPS；地址可以包含反向代理前缀，但不能包含账号密码、查询参数或片段。远程后端应在 `.env` 设置 `HARBOR_SECURE_COOKIE=true`，并保留 `HARBOR_ALLOWED_ORIGINS` 中的 Tauri 来源。
+登录页自动连接后端，无需输入服务地址。在项目根目录 `.env` 中配置：
 
-客户端关闭后需要重新登录。服务地址保存在当前 Windows 用户的 WebView 数据中，开发版与安装版可能各自保存；账号、Agent 和历史会话保存在后端。
+```dotenv
+VITE_HARBOR_SERVER_URL=http://127.0.0.1:8017/
+```
+
+未配置时桌面端默认连接上述地址。此配置也用于浏览器开发服务器的 `/api` 代理。修改后重启 Vite；桌面发布版需要重新构建，运行已有 exe 时修改 `.env` 不会生效。连接远程服务时使用 HTTPS；地址可以包含反向代理前缀，但不能包含账号密码、查询参数或片段。远程后端应在 `.env` 设置 `HARBOR_SECURE_COOKIE=true`，并保留 `HARBOR_ALLOWED_ORIGINS` 中的 Tauri 来源。
+
+客户端关闭后需要重新登录。登录页勾选“记住密码”后，仅在登录成功时将邮箱和密码存入当前 Windows 用户的系统凭据库，下次打开自动回填；取消勾选立即清除保存内容。凭据按后端地址隔离，不写入 localStorage。密码框的眼睛按钮可切换显示/隐藏，默认隐藏；浏览器版使用浏览器自身的密码管理器。服务地址由构建时的环境配置决定，不再读取 WebView 中旧的地址缓存；账号、Agent 和历史会话保存在后端。
 
 ## 开发与构建
 

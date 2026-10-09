@@ -1,19 +1,46 @@
-import { Anchor, ArrowRight, Loader2, ShieldCheck } from 'lucide-react';
+import { Anchor, ArrowRight, Eye, EyeOff, Loader2, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
+import { toast } from 'sonner';
 
 import { harborRequest, rememberIdentity } from '@/api/harbor';
 import type { Identity } from '@/api/harbor';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { isDesktop, getServerUrl, setServerUrl } from '@/lib/desktop';
+import { Checkbox } from '@/components/ui/checkbox';
+import { isDesktop } from '@/lib/desktop';
+import { clearSavedLogin, loadSavedLogin, saveLogin } from '@/lib/login-credentials';
 
 export function SetupPage({ onComplete }: { onComplete: () => void }) {
-  const [server, setServer] = useState(getServerUrl);
   const [register, setRegister] = useState(false);
   const [registrationEnabled, setRegistrationEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberPassword, setRememberPassword] = useState(false);
+  const [restoring, setRestoring] = useState(isDesktop);
+  useEffect(() => {
+    let active = true;
+    loadSavedLogin().then(saved => {
+      if (active && saved) {
+        setEmail(saved.email); setPassword(saved.password); setRememberPassword(true);
+      }
+    }).catch(() => {
+      if (active) setError('无法读取已保存的密码，请手动输入。');
+    }).finally(() => { if (active) setRestoring(false); });
+    return () => { active = false; };
+  }, []);
+  async function changeRemember(checked: boolean) {
+    if (checked) { setRememberPassword(true); return; }
+    setBusy(true); setError('');
+    try {
+      await clearSavedLogin(); setRememberPassword(false);
+    } catch { setError('无法清除已保存的密码，请重试。'); }
+    finally { setBusy(false); }
+  }
+
   useEffect(() => {
     harborRequest<{ registration_enabled: boolean }>('/auth/status')
       .then(r => setRegistrationEnabled(r.registration_enabled))
@@ -24,6 +51,11 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
     const form = new FormData(event.currentTarget);
     try {
       const identity = await harborRequest<Identity>(register ? '/auth/register' : '/auth/login', 'POST', Object.fromEntries(form));
+      if (isDesktop && !register && rememberPassword) {
+        try { await saveLogin({ email, password }); }
+        catch { toast.warning('已登录，但密码未能保存，请下次登录时重试。'); }
+      }
+      setPassword(''); setShowPassword(false);
       rememberIdentity(identity); onComplete();
     } catch (e) { setError(e instanceof Error ? e.message : '登录失败'); }
     finally { setBusy(false); }
@@ -41,21 +73,27 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
       <p className="text-sm text-muted-foreground mb-2">欢迎来到智港</p>
       <h2 className="text-3xl font-semibold tracking-tight">{register ? '创建你的工作空间' : '登录工作空间'}</h2>
       <p className="text-sm text-muted-foreground mt-3 mb-8">{register ? '注册账号，开始构建你的第一个 Agent。' : '继续与你的智能体协作。'}</p>
-      {isDesktop && <div className="mb-6 space-y-2">
-        <label htmlFor="server-url" className="text-sm">后端服务地址</label>
-        <div className="flex gap-2"><Input id="server-url" value={server} onChange={e => setServer(e.target.value)} placeholder="http://127.0.0.1:8017" />
-          <Button type="button" variant="outline" onClick={() => { try { setServerUrl(server); window.location.reload(); } catch (e) { setError((e as Error).message); } }}>连接</Button></div>
-        <p className="text-xs text-muted-foreground">本机使用 HTTP，远程服务器使用 HTTPS。更改后点击连接。</p>
-      </div>}
       <form onSubmit={submit} className="space-y-5">
         {register && <label className="block text-sm space-y-2"><span>你的名字</span><Input name="name" required maxLength={80} autoComplete="name" placeholder="如何称呼你" /></label>}
-        <label className="block text-sm space-y-2"><span>邮箱</span><Input type="email" name="email" required maxLength={254} autoComplete="email" placeholder="you@company.com" /></label>
-        <label className="block text-sm space-y-2"><span>密码</span><Input type="password" name="password" required minLength={10} maxLength={128} autoComplete={register ? 'new-password' : 'current-password'} placeholder="至少 10 个字符" /></label>
+        <label className="block text-sm space-y-2"><span>邮箱</span><Input type="email" name="email" value={email} onChange={e => setEmail(e.target.value)} disabled={busy || restoring} required maxLength={254} autoComplete="username" placeholder="you@company.com" /></label>
+        <div className="space-y-2">
+          <label htmlFor="login-password" className="text-sm">密码</label>
+          <div className="relative">
+            <Input id="login-password" className="pr-10" type={showPassword ? 'text' : 'password'} name="password" value={password} onChange={e => setPassword(e.target.value)} disabled={busy || restoring} required minLength={10} maxLength={128} autoComplete={register ? 'new-password' : 'current-password'} placeholder="至少 10 个字符" />
+            <button type="button" className="absolute inset-y-0 right-0 flex w-10 items-center justify-center rounded-r-lg text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" aria-label={showPassword ? '隐藏密码' : '显示密码'} aria-pressed={showPassword} aria-controls="login-password" onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+        </div>
+        {!register && isDesktop && <div className="flex items-center gap-2">
+          <Checkbox id="remember-password" checked={rememberPassword} disabled={busy || restoring} onCheckedChange={value => { void changeRemember(value === true); }} />
+          <label htmlFor="remember-password" className="text-sm cursor-pointer">记住密码</label>
+        </div>}
         {register && <label className="block text-sm space-y-2"><span>工作空间名称</span><Input name="tenant_name" required maxLength={80} placeholder="例如：产品团队" /></label>}
         {error && <p role="alert" className="text-sm text-destructive bg-destructive/10 rounded-md p-3">{error}</p>}
-        <Button className="w-full h-11" type="submit" disabled={busy}>{busy ? <Loader2 className="animate-spin" /> : <>{register ? '创建账号与空间' : '登录'}<ArrowRight size={16} /></>}</Button>
+        <Button className="w-full h-11" type="submit" disabled={busy || restoring}>{busy || restoring ? <Loader2 className="animate-spin" /> : <>{register ? '创建账号与空间' : '登录'}<ArrowRight size={16} /></>}</Button>
       </form>
-      {registrationEnabled && <button type="button" className="text-sm mt-6 text-muted-foreground hover:text-foreground" onClick={() => { setRegister(!register); setError(''); }}>{register ? '已有账号？返回登录' : '第一次使用？创建账号'}</button>}
+      {registrationEnabled && <button type="button" className="text-sm mt-6 text-muted-foreground hover:text-foreground" disabled={busy || restoring} onClick={() => { setRegister(!register); setPassword(''); setShowPassword(false); setError(''); }}>{register ? '已有账号？返回登录' : '第一次使用？创建账号'}</button>}
       <p className="text-xs text-muted-foreground mt-14">AgentHarbor · Built with AgentScope</p>
     </div></section>
   </main>;

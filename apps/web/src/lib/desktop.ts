@@ -4,18 +4,12 @@ import { normalizeServerUrl, routeHref } from './desktop-config';
 import { responseBlob, abortReason, normalizeAbortResponse } from './http-body';
 
 export const isDesktop = isTauri();
-export const getServerUrl = () => localStorage.getItem('harbor_server') || 'http://127.0.0.1:8017/';
+export const getServerUrl = () => import.meta.env.VITE_HARBOR_SERVER_URL || 'http://127.0.0.1:8017/';
 export const apiBaseUrl = () => isDesktop ? normalizeServerUrl(getServerUrl()) : `${window.location.origin}/api/`;
 export const appHref = (path: string) => routeHref(path, isDesktop);
 export function navigateApp(path: string) {
   window.location.assign(appHref(path));
   if (isDesktop) window.location.reload();
-}
-
-export function setServerUrl(value: string) {
-  localStorage.setItem('harbor_server', normalizeServerUrl(value));
-  sessionStorage.removeItem('harbor_user');
-  sessionStorage.removeItem('harbor_tenant');
 }
 
 export async function apiFetch(input: string | URL, init?: RequestInit): Promise<Response> {

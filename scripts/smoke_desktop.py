@@ -14,7 +14,11 @@ sys.path.insert(0,str(ROOT/'scripts'))
 from smoke_chat import Fixture, REPLY
 def port():
     with socket.socket() as s: s.bind(('127.0.0.1',0)); return s.getsockname()[1]
-api_port,debug_port=port(),port()
+# Must match VITE_HARBOR_SERVER_URL embedded in the packaged executable.
+api_port = int(os.environ.get('HARBOR_DESKTOP_TEST_PORT', '8017'))
+with socket.socket() as check:
+    check.bind(('127.0.0.1', api_port))
+debug_port=port()
 base=f'http://127.0.0.1:{api_port}'
 fixture=ThreadingHTTPServer(('127.0.0.1',0),Fixture)
 threading.Thread(target=fixture.serve_forever,daemon=True).start()
@@ -48,10 +52,7 @@ try:
         expect(page.get_by_role('heading',name='登录工作空间')).to_be_visible(timeout=60000)
         assert page.evaluate('!!window.__TAURI_INTERNALS__'), 'Not a Tauri WebView'
         assert page.url.startswith('http://tauri.localhost'), page.url
-        page.get_by_label('后端服务地址').fill(base)
-        page.get_by_role('button',name='连接',exact=True).click()
-        page.wait_for_timeout(1500)
-        print('AFTER CONNECT',page.url,page.locator('body').inner_text()[-700:],flush=True)
+        expect(page.locator('#server-url')).to_have_count(0)
         probe_chunk=next(f for f in (ROOT/'apps/web/dist/assets').glob('*.js') if 'plugin:http|fetch_send' in f.read_text(encoding='utf-8'))
         print('HTTP PROBE',page.evaluate('''async ({chunk,url}) => {try { const {fetch}=await import('/assets/'+chunk); const r=await fetch(url);return {status:r.status,text:await r.text()}; } catch(e) { return String(e); }}''',{'chunk':probe_chunk.name,'url':base+'/harbor/auth/status'}),flush=True)
         expect(page.get_by_role('button',name='第一次使用？创建账号')).to_be_visible(timeout=30000)
