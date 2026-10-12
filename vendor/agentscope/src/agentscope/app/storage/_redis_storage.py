@@ -1244,8 +1244,7 @@ class RedisStorage(StorageBase):
         return records
 
     async def delete_schedule(self, user_id: str, schedule_id: str) -> bool:
-        """Delete a cron task record, cascade-delete its execution sessions,
-        and remove it from the user and global indexes."""
+        """Delete a cron task record and its indexes, preserving execution sessions."""
         key = self._key(
             self.key_config.schedule,
             user_id=user_id,
@@ -1254,17 +1253,6 @@ class RedisStorage(StorageBase):
         raw = await self._client.get(key)
         if not raw:
             return False
-
-        record = ScheduleRecord.model_validate_json(raw)
-
-        # Cascade: delete all sessions created by this schedule
-        sessions = await self.list_sessions_by_schedule(user_id, schedule_id)
-        for session in sessions:
-            await self.delete_session(
-                user_id,
-                record.agent_id,
-                session.id,
-            )
 
         # Clean up the schedule session index key itself
         schedule_session_key = self._key(

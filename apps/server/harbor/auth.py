@@ -67,7 +67,9 @@ class AuthBoundary:
         request = Request(scope)
         try:
             path = scope['path']
-            if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
+            browser_handoff = request.method == 'POST' and path == '/harbor/connectors/oauth/browser'
+            # The ticket exchange validates the exact API origin in its route.
+            if request.method not in {'GET', 'HEAD', 'OPTIONS'} and not browser_handoff:
                 origin = request.headers.get('origin')
                 # Explicitly trusted mobile Web origins may use a separate API host.
                 # Bearer requests never fall back to ambient cookies below. Keep
@@ -85,6 +87,9 @@ class AuthBoundary:
                 ('GET', '/harbor/health'), ('GET', '/harbor/auth/status'),
                 ('POST', '/harbor/auth/login'), ('POST', '/harbor/auth/register'),
                 ('POST', '/harbor/auth/mobile/login'),
+                ('GET', '/harbor/connectors/oauth/callback'),
+                ('GET', '/harbor/connectors/oauth/browser'),
+                ('POST', '/harbor/connectors/oauth/browser'),
             }
             if (request.method, path) not in public:
                 token = request.cookies.get(COOKIE, '')

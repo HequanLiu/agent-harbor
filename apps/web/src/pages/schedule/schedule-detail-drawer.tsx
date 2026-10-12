@@ -212,7 +212,7 @@ export function ScheduleDetailDrawer({
 					entity: t('schedule.deleteSchedule.entity'),
 					name: data.name,
 				})}
-				description={t('common.deleteDescription')}
+				description={t('schedule.deleteSchedule.description')}
 				onConfirm={handleDelete}
 			/>
 		</>

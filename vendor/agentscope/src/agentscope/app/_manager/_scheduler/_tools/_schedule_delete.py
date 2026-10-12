@@ -28,9 +28,8 @@ class ScheduleDelete(ToolBase):
     """The schedule delete tool.
 
     Permanently removes the given scheduled job from APScheduler,
-    storage, and the message bus. Every execution session spawned by
-    the schedule is cancelled (if running) and has its bus state
-    purged. The job cannot be recovered after removal.
+    and storage. Existing execution sessions, messages and bus state
+    are preserved. Sessions can be deleted separately.
     """
 
     name: str = "ScheduleDelete"
@@ -38,7 +37,8 @@ class ScheduleDelete(ToolBase):
     description: str = (
         "Permanently delete a scheduled task by its schedule ID. "
         "After this call the task will no longer be executed and its record "
-        "will be deleted from storage."
+        "will be deleted from storage. Historical conversations are preserved "
+        "and must be deleted separately if desired."
     )
     input_schema: dict = _ScheduleDeleteParams.model_json_schema()
 
@@ -66,9 +66,7 @@ class ScheduleDelete(ToolBase):
             storage (`StorageBase`):
                 The storage backend used to delete the persisted record.
             message_bus (`MessageBus`):
-                The message bus used to cancel in-flight chat runs for
-                any execution session spawned by this schedule and to
-                purge their per-session bus state.
+                The message bus passed to the shared session service.
         """
         self._user_id = user_id
         self._scheduler = scheduler
@@ -92,12 +90,9 @@ class ScheduleDelete(ToolBase):
     ) -> ToolChunk:  # type: ignore[override]
         """Permanently delete the scheduled task with the given ID.
 
-        Delegates the storage + bus cascade to
-        :meth:`SessionService.delete_schedule`, which cancels in-flight
-        runs for any session this schedule spawned and purges their
-        bus state before dropping the schedule record. The APScheduler
-        job is removed separately because it lives in-process and the
-        service layer is bus/storage-only.
+        Deletes only the schedule through SessionService, preserving its
+        execution conversations. The in-process APScheduler job is removed
+        separately.
 
         Args:
             schedule_id (`str`):
@@ -146,7 +141,7 @@ class ScheduleDelete(ToolBase):
                 TextBlock(
                     text=(
                         f"Schedule {schedule_id!r} has been permanently "
-                        f"deleted."
+                        f"deleted. Historical conversations have been preserved."
                     ),
                 ),
             ],

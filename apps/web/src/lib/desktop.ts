@@ -1,9 +1,17 @@
-import { isTauri } from '@tauri-apps/api/core';
+import { invoke, isTauri } from '@tauri-apps/api/core';
 
 import { normalizeServerUrl, routeHref } from './desktop-config';
 import { responseBlob, abortReason, normalizeAbortResponse } from './http-body';
 
 export const isDesktop = isTauri();
+
+export async function openConnectorBrowser(url: string): Promise<void> {
+  try {
+    await invoke('open_connector_browser', { url });
+  } catch {
+    throw new Error('无法打开系统浏览器，请确认已设置默认浏览器并重试');
+  }
+}
 export const getServerUrl = () => import.meta.env.VITE_HARBOR_SERVER_URL || 'http://127.0.0.1:8017/';
 export const apiBaseUrl = () => isDesktop ? normalizeServerUrl(getServerUrl()) : `${window.location.origin}/api/`;
 export const appHref = (path: string) => routeHref(path, isDesktop);

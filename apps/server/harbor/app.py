@@ -14,6 +14,7 @@ from agentscope.middleware import AgenticMemoryMiddleware
 from agentscope.rag import ApproxTokenChunker, QdrantStore
 
 from .auth import install_auth
+from .connectors.api import install_connectors
 from .mobile import router as mobile_router
 from .sse import SSEHandshake
 from .workspaces import TenantWorkspaceManager
@@ -33,11 +34,12 @@ def create_harbor_app(data_dir=None):
     if not secret_file.exists():
         secret_file.write_text(secrets.token_urlsafe(48), encoding='utf-8')
     storage = AsyncSQLAlchemyStorage(f"sqlite+aiosqlite:///{(data / 'agents.sqlite3').as_posix()}")
+    workspace_manager = TenantWorkspaceManager(data / 'workspaces')
     app = create_app(
         title='AgentHarbor · 智港',
         storage=storage,
         message_bus=InMemoryMessageBus(),
-        workspace_manager=TenantWorkspaceManager(data / 'workspaces'),
+        workspace_manager=workspace_manager,
         knowledge_base_manager=CollectionPerKbManager(storage=storage, vector_store=QdrantStore(path=str(data / 'vectors'))),
         knowledge_chunkers=[ApproxTokenChunker],
         mcp_hubs=[GitHubMCPHub()],
@@ -54,4 +56,5 @@ def create_harbor_app(data_dir=None):
         registration_enabled=os.getenv('HARBOR_ALLOW_REGISTRATION', 'true').lower() == 'true',
         secure_cookie=os.getenv('HARBOR_SECURE_COOKIE', 'false').lower() == 'true',
     )
+    install_connectors(app, data, workspace_manager)
     return app

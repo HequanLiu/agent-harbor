@@ -1,7 +1,7 @@
 import type { ToolCallBlock } from '@agentscope-ai/agentscope/message';
 import type { ReactNode } from 'react';
 
-import { ToolCallRow } from './_shared';
+import { getResultText, ToolCallRow } from './_shared';
 import { BashRenderer } from './BashRenderer';
 import {
 	defaultGetDisplayName,
@@ -12,10 +12,12 @@ import {
 import { EditRenderer } from './EditRenderer';
 import { GlobRenderer } from './GlobRenderer';
 import { GrepRenderer } from './GrepRenderer';
+import { MesDraftLink } from './MesDraftLink';
 import { ReadRenderer } from './ReadRenderer';
 import { TaskCreateRenderer } from './TaskCreateRenderer';
 import type { TFunction, ToolCallWithResult, ToolRenderer } from './types';
 import { WriteRenderer } from './WriteRenderer';
+import { mesDraftSnapshot } from '@/lib/mes-draft-link';
 
 const renderers: Record<string, ToolRenderer> = {
 	Bash: BashRenderer,
@@ -51,5 +53,6 @@ export function renderToolCall(pair: ToolCallWithResult, t: TFunction): ReactNod
 	const r = getRenderer(pair.call.name);
 	const header = r.renderHeader?.(pair, t) ?? defaultRenderHeader(pair, t);
 	const body = r.renderBody?.(pair, t) ?? defaultRenderBody(pair, t);
-	return <ToolCallRow key={pair.call.id} pair={pair} header={header} body={body} />;
+	const draft = mesDraftSnapshot(pair.call.name, getResultText(pair.result), pair.result?.state);
+	return <div key={pair.call.id}><ToolCallRow pair={pair} header={header} body={body} />{draft && <MesDraftLink key={draft.draft_id} draftId={draft.draft_id} initialDraft={draft} />}</div>;
 }

@@ -139,6 +139,7 @@ export function useMessages(
 	// runs *after* the render that changed `sessionId`, so a flag it owns
 	// is still `false` for one frame — long enough to paint the empty
 	// state over a session that does have messages.
+	const [connectedKey, setConnectedKey] = useState<string | null>(null);
 	const [loadedKey, setLoadedKey] = useState<string | null>(null);
 	const [phase, setPhase] = useState<ReplyPhase>('idle');
 	const [error, setError] = useState<Error | null>(null);
@@ -278,6 +279,7 @@ export function useMessages(
 	// ── Lifecycle: fetch history + open SSE stream ──────────────────
 	useEffect(() => {
 		setLoadedKey(null);
+		setConnectedKey(null);
 		msgsRef.current = [];
 		currentReplyRef.current = null;
 		setMsgs([]);
@@ -346,6 +348,7 @@ export function useMessages(
 					sessionId,
 					agentId,
 					controller.signal,
+					() => { if (!cancelled) setConnectedKey(`${agentId}:${sessionId}`); },
 				)) {
 					if (cancelled) break;
 					processEvent(event);
@@ -556,6 +559,7 @@ export function useMessages(
 	return {
 		msgs: ownsConversation ? msgs : [],
 		loading,
+		streamReady: Boolean(agentId && sessionId && connectedKey === `${agentId}:${sessionId}`),
 		phase: ownsConversation ? phase : ('idle' as ReplyPhase),
 		error: ownsConversation ? error : null,
 		send,

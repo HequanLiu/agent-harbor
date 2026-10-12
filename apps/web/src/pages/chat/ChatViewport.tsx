@@ -1,3 +1,4 @@
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { PermissionContext } from '@agentscope-ai/agentscope/permission';
 import type { TaskContext } from '@agentscope-ai/agentscope/state';
 import {
@@ -54,7 +55,6 @@ import { useKnowledgeBases } from '@/hooks/useKnowledgeBases';
 import { useMessages } from '@/hooks/useMessages';
 import { useSessions } from '@/hooks/useSessions';
 import { useWorkspace } from '@/hooks/useWorkspace.ts';
-import { useWorkspaceStatus } from '@/hooks/useWorkspaceStatus';
 import { useTranslation } from '@/i18n/useI18n';
 
 interface ChatViewportProps {
@@ -169,6 +169,10 @@ function closePanelInLayout(layout: PanelKey[][], key: PanelKey): PanelKey[][] {
  * @returns The right-side main JSX of the chat page.
  */
 export function ChatViewport({ agentId, sessionId, onSessionsChanged }: ChatViewportProps) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const sentExample = useRef<string | null>(null);
+
 	const { t } = useTranslation();
 	const { sessions, refetch: refetchSessions } = useSessions(agentId);
 	const { groups } = useAvailableModels();
@@ -250,6 +254,7 @@ export function ChatViewport({ agentId, sessionId, onSessionsChanged }: ChatView
 	const {
 		msgs,
 		loading: messagesLoading,
+		streamReady,
 		phase,
 		send,
 		onUserConfirm,
@@ -261,6 +266,21 @@ export function ChatViewport({ agentId, sessionId, onSessionsChanged }: ChatView
 		onStateUpdated: handleStateUpdated,
 		onSessionUpdated: handleSessionUpdated,
 	});
+
+  const example = location.state?.connectorExample;
+  useEffect(() => {
+    if (!example || example.agentId !== agentId || example.sessionId !== sessionId ||
+        typeof example.prompt !== 'string' || !example.prompt.trim() ||
+        messagesLoading || !streamReady || sentExample.current === sessionId) return;
+    sentExample.current = sessionId;
+    // Consume before sending so rerenders and browser back do not resend.
+    const { connectorExample: _consumed, ...rest } = location.state;
+    navigate(location.pathname + location.search, { replace: true, state: rest });
+    if (msgs.length === 0 && phase === 'idle') {
+      void send([{ id: crypto.randomUUID(), type: 'text', text: example.prompt, created_at: new Date().toISOString() }]);
+    }
+  }, [example, agentId, sessionId, messagesLoading, streamReady, msgs.length, phase, send, navigate, location]);
+
 	const {
 		mcps,
 		loading: mcpsLoading,
@@ -354,23 +374,6 @@ export function ChatViewport({ agentId, sessionId, onSessionsChanged }: ChatView
 	// eagerly on first render, so a later `const` would still be in
 	// the temporal dead zone.
 	const view = sessions.find((v) => v.session.id === sessionId) ?? null;
-
-	const { status: workspaceStatus, refetch: refetchWorkspaceStatus } = useWorkspaceStatus(
-		agentId,
-		sessionId,
-		view?.session.config.cwd ?? null,
-	);
-
-	// A finished reply is the one moment the agent may have changed the
-	// working tree, and it is why nothing polls for git status. Watching
-	// `phase` rather than the REPLY_END event also covers the interrupt
-	// timeout, which reaches idle without one.
-	const prevPhaseRef = useRef(phase);
-	useEffect(() => {
-		const wasRunning = prevPhaseRef.current !== 'idle';
-		prevPhaseRef.current = phase;
-		if (wasRunning && phase === 'idle') void refetchWorkspaceStatus();
-	}, [phase, refetchWorkspaceStatus]);
 
 	// Build the panel descriptors with live data. Rebuilt on every
 	// data change so the dock always renders the latest state — the
@@ -846,20 +849,11 @@ export function ChatViewport({ agentId, sessionId, onSessionsChanged }: ChatView
 									sessionId={sessionId}
 									cwd={view?.session.config.cwd ?? null}
 									onCwdChange={handleCwdChange}
-									git={workspaceStatus?.git ?? null}
-									onRefreshGit={refetchWorkspaceStatus}
 									phase={phase}
 									disabled={selectedModel === null}
 									onSend={send}
 									onUserConfirm={onUserConfirm}
 									onInterrupt={interrupt}
-									// cwd={
-									// 	{cwd: view?.session.config.cwd, git: {
-									// 		branch: 'main',
-									// 		deletion: 0,
-									// 		addition: 0,
-									// 	}}
-									// }
 									footerSlot={
 										subagentHitl.length > 0 ? (
 											<SubagentHitlCard

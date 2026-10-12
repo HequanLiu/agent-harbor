@@ -472,7 +472,7 @@ class AsyncSQLAlchemyStorage(StorageBase):
         user_id: str,
         schedule_id: str,
     ) -> bool:
-        """Delete a schedule + cascade its execution sessions on *sess*."""
+        """Delete only the schedule on *sess*, preserving execution history."""
         from sqlalchemy import delete, select
 
         row = (
@@ -482,21 +482,6 @@ class AsyncSQLAlchemyStorage(StorageBase):
         ).scalar_one_or_none()
         if row is None or row.user_id != user_id:
             return False
-
-        sessions = (
-            (
-                await sess.execute(
-                    select(SessionRow).where(
-                        SessionRow.user_id == user_id,
-                        SessionRow.source_schedule_id == schedule_id,
-                    ),
-                )
-            )
-            .scalars()
-            .all()
-        )
-        for s in sessions:
-            await self._delete_session_impl(sess, user_id, s.agent_id, s.id)
 
         await sess.execute(
             delete(ScheduleRow).where(
@@ -1479,10 +1464,7 @@ class AsyncSQLAlchemyStorage(StorageBase):
         user_id: str,
         schedule_id: str,
     ) -> bool:
-        """Delete a schedule + cascade its execution sessions.
-
-        Atomic: the schedule and every session it spawned are removed
-        in one transaction (see :meth:`_delete_schedule_impl`).
+        """Delete only the schedule; execution sessions remain independently deletable.
         """
         async with self._session() as sess:
             ok = await self._delete_schedule_impl(sess, user_id, schedule_id)

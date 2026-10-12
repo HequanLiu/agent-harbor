@@ -43,6 +43,8 @@ powershell -ExecutionPolicy Bypass -File scripts\setup.ps1
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\desktop.ps1 -Mode Dev
+或者
+pnpm --dir apps/web desktop:dev
 ```
 
 此命令自动启动 Vite 和 Tauri 窗口；`5177` 端口必须空闲，不要同时运行浏览器版的 Vite。Python 后端仍需按上一步单独启动。

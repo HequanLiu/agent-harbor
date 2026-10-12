@@ -20,6 +20,8 @@ import { isDesktop } from '@/lib/desktop';
 import { queryClient } from '@/lib/query-client';
 import { ChannelPage } from '@/pages/channel';
 import { ChatPage } from '@/pages/chat';
+import { ConnectorsPage } from '@/pages/connectors';
+import OrderEditorPage from '@/pages/connectors/OrderEditor';
 import { CredentialPage } from '@/pages/credential';
 import { KnowledgePage } from '@/pages/knowledge';
 import { SchedulePage } from '@/pages/schedule';
@@ -47,6 +49,8 @@ const router = (isDesktop ? createHashRouter : createBrowserRouter)([
 					{ path: '/schedule', element: <SchedulePage /> },
 					{ path: '/channel', element: <ChannelPage /> },
 					{ path: '/credential', element: <CredentialPage /> },
+					{ path: '/connectors', element: <ConnectorsPage /> },
+					{ path: '/connectors/:connectorId/orders/:draftId?', element: <OrderEditorPage /> },
 					{ path: '/mcp', element: <MCPHubPage /> },
 					{ path: '/mcp/:hubId', element: <MCPHubPage /> },
 					{ path: '/skill', element: <SkillHubPage /> },

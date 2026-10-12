@@ -8,6 +8,7 @@ import {
 	Languages,
 	LibraryBig,
 	Moon,
+	Plug,
 	Sun,
 	UserRound,
 } from 'lucide-react';
@@ -118,6 +119,11 @@ export function AppSidebar() {
 									className="justify-center"
 								>
 									<KeyRound />
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+							<SidebarMenuItem>
+								<SidebarMenuButton tooltip={{ children: '连接器', hidden: false }} aria-label="连接器" isActive={location.pathname.startsWith('/connectors')} onClick={() => navigate('/connectors')} className="justify-center">
+									<Plug />
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 							<SidebarMenuItem>

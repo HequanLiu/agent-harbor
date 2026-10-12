@@ -513,7 +513,8 @@
 			"title": "Create Schedule"
 		},
 		"deleteSchedule": {
-			"entity": "schedule"
+			"entity": "schedule",
+			"description": "The task will no longer run on its schedule. Historical conversations are kept and can be deleted separately from the conversation list."
 		},
 		"endAt": "End Date",
 		"end_at": "End At",

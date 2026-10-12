@@ -513,7 +513,8 @@
 			"title": "创建日程"
 		},
 		"deleteSchedule": {
-			"entity": "日程"
+			"entity": "日程",
+			"description": "删除后任务将不再定时执行。历史对话会保留，可在对话列表中单独删除。"
 		},
 		"endAt": "结束日期",
 		"end_at": "结束时间",
