@@ -14,7 +14,9 @@ from agentscope.middleware import AgenticMemoryMiddleware
 from agentscope.rag import ApproxTokenChunker, QdrantStore
 
 from .auth import install_auth
+from .connectors.api import install_connectors
 from .mobile import router as mobile_router
+from .sse import SSEHandshake
 from .workspaces import TenantWorkspaceManager
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -32,11 +34,12 @@ def create_harbor_app(data_dir=None):
     if not secret_file.exists():
         secret_file.write_text(secrets.token_urlsafe(48), encoding='utf-8')
     storage = AsyncSQLAlchemyStorage(f"sqlite+aiosqlite:///{(data / 'agents.sqlite3').as_posix()}")
+    workspace_manager = TenantWorkspaceManager(data / 'workspaces')
     app = create_app(
         title='AgentHarbor · 智港',
         storage=storage,
         message_bus=InMemoryMessageBus(),
-        workspace_manager=TenantWorkspaceManager(data / 'workspaces'),
+        workspace_manager=workspace_manager,
         knowledge_base_manager=CollectionPerKbManager(storage=storage, vector_store=QdrantStore(path=str(data / 'vectors'))),
         knowledge_chunkers=[ApproxTokenChunker],
         mcp_hubs=[GitHubMCPHub()],
@@ -46,10 +49,12 @@ def create_harbor_app(data_dir=None):
         download_secret=secret_file.read_text(encoding='utf-8').strip(),
     )
     app.include_router(mobile_router)
+    app.add_middleware(SSEHandshake)
     install_auth(
         app, data / 'identity.sqlite3',
         allowed_origins=set(os.getenv('HARBOR_ALLOWED_ORIGINS', 'http://localhost:5177,http://127.0.0.1:5177,http://localhost:8081,http://127.0.0.1:8081,http://localhost:8017,http://127.0.0.1:8017,tauri://localhost,http://tauri.localhost,https://tauri.localhost').split(',')),
         registration_enabled=os.getenv('HARBOR_ALLOW_REGISTRATION', 'true').lower() == 'true',
         secure_cookie=os.getenv('HARBOR_SECURE_COOKIE', 'false').lower() == 'true',
     )
+    install_connectors(app, data, workspace_manager)
     return app

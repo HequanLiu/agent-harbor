@@ -589,7 +589,7 @@ class StorageBase(ABC):
         user_id: str,
         schedule_id: str,
     ) -> bool:
-        """Delete a cron task record and remove it from the user's index.
+        """Delete a cron task record and its index, preserving sessions and messages.
 
         Args:
             user_id (`str`): The owner user id.

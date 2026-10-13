@@ -30,6 +30,10 @@ export interface Session {
   status?: { type: string };
 }
 export interface Block {
+  hint?: string | Block[];
+  source?: string | null;
+  output?: string | Block[];
+  metadata?: Record<string, unknown>;
   id?: string;
   type: string;
   text?: string;
@@ -48,6 +52,11 @@ export interface History {
   has_more: boolean;
 }
 export interface AgentEvent {
+  hint?: string | Block[];
+  source?: string | null;
+  state?: string;
+  metadata?: Record<string, unknown>;
+  tool_call_name?: string;
   id?: string;
   type: string;
   reply_id?: string;

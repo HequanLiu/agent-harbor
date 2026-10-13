@@ -87,7 +87,7 @@ interface TextInputProps {
 	/**
 	 * Content rendered directly above the input pill, inside the outer
 	 * wrapper that {@link className} styles (e.g. the working directory
-	 * and git status).
+	 * and connector selector).
 	 *
 	 * The pill keeps all four of its corners, so the two only read as one
 	 * surface if the caller gives that wrapper a background and a radius

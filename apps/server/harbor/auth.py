@@ -1,6 +1,7 @@
 """Same-origin cookie authentication and tenant boundary, without buffering SSE."""
 from collections import defaultdict, deque
 from pathlib import Path
+import re
 import threading
 import time
 from urllib.parse import parse_qsl, urlencode
@@ -67,7 +68,9 @@ class AuthBoundary:
         request = Request(scope)
         try:
             path = scope['path']
-            if request.method not in {'GET', 'HEAD', 'OPTIONS'}:
+            browser_handoff = request.method == 'POST' and path == '/harbor/connectors/oauth/browser'
+            # The ticket exchange validates the exact API origin in its route.
+            if request.method not in {'GET', 'HEAD', 'OPTIONS'} and not browser_handoff:
                 origin = request.headers.get('origin')
                 # Explicitly trusted mobile Web origins may use a separate API host.
                 # Bearer requests never fall back to ambient cookies below. Keep
@@ -85,8 +88,16 @@ class AuthBoundary:
                 ('GET', '/harbor/health'), ('GET', '/harbor/auth/status'),
                 ('POST', '/harbor/auth/login'), ('POST', '/harbor/auth/register'),
                 ('POST', '/harbor/auth/mobile/login'),
+                ('GET', '/harbor/connectors/oauth/callback'),
+                ('GET', '/harbor/connectors/oauth/browser'),
+                ('POST', '/harbor/connectors/oauth/browser'),
             }
-            if (request.method, path) not in public:
+            # This narrow GET uses its own short-lived UI-session ticket. The
+            # route rechecks ownership and connector grants, never ambient cookies.
+            sandbox_ticket_request = request.method == 'GET' and re.fullmatch(
+                r'/harbor/connector-ui/sandbox/[A-Za-z0-9_-]{43}', path,
+            ) is not None
+            if (request.method, path) not in public and not sandbox_ticket_request:
                 token = request.cookies.get(COOKIE, '')
                 if 'authorization' in request.headers:
                     scheme, _, token = request.headers['authorization'].partition(' ')

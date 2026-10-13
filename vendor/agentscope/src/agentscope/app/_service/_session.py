@@ -28,8 +28,7 @@ to clean its own non-session scope (records, indexes, back-refs).
                       → service.delete_schedule per owned schedule
                       → storage.delete_agent   (agent record + team back-refs)
         │
-    delete_schedule   → service.delete_session per spawned session
-                      → storage.delete_schedule (schedule record + indexes)
+    delete_schedule   -> storage.delete_schedule (preserves execution sessions)
 
 Storage's own internal cascades (e.g.
 ``storage.delete_agent`` re-iterating sessions) become idempotent
@@ -575,8 +574,7 @@ class SessionService:
         user_id: str,
         schedule_id: str,
     ) -> bool:
-        """Cancel, delete and bus-purge every session spawned by a
-        schedule, then drop the schedule record.
+        """Delete the schedule while preserving its execution sessions and bus state.
 
         Args:
             user_id (`str`): The owner user id.
@@ -586,18 +584,6 @@ class SessionService:
             `bool`:
                 ``True`` if the schedule record existed and was deleted.
         """
-        for session in await self._storage.list_sessions_by_schedule(
-            user_id,
-            schedule_id,
-        ):
-            await self.delete_session(
-                user_id,
-                session.agent_id,
-                session.id,
-            )
-
-        # storage.delete_schedule re-iterates the same sessions —
-        # idempotent no-ops; only schedule record + indexes remain.
         return await self._storage.delete_schedule(user_id, schedule_id)
 
     # ------------------------------------------------------------------

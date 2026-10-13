@@ -211,9 +211,9 @@ async def delete_schedule(
 ) -> None:
     """Permanently delete a schedule.
 
-    Cancels any in-flight chat run for sessions this schedule has
-    triggered, removes their records via the session service, and tells
-    the timer-owning node to drop the job.
+    Removes the schedule and tells the timer-owning node to drop the job.
+    Existing execution sessions and messages remain available and can be
+    deleted separately through the session API.
 
     Args:
         schedule_id (`str`): ID of the schedule to delete.

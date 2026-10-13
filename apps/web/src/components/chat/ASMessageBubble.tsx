@@ -25,6 +25,8 @@ import mime from 'mime';
 import { memo, useEffect, useRef, useState } from 'react';
 
 import { renderToolCall } from './tool-renderers';
+import { ConnectorApp } from '@/components/connector-ui/ConnectorApp';
+import { connectorBinding } from '@/lib/connector-app';
 import { countDiffStats, DiffStats, getResultDiff } from './tool-renderers/_shared';
 import type { TFunction, ToolCallWithResult } from './tool-renderers/types';
 import { Markdown } from '@/components/markdown';
@@ -668,6 +670,7 @@ export function ASBlock({ block, ...props }: ASBlockProps) {
 		case 'thinking':
 			return <ThinkingBlockView block={block} />;
 		case 'hint': {
+			const binding = connectorBinding(block);
 			// Parse source: try JSON, fall back to plain string, default to t('common.message').
 			let hintLabel: string;
 			let hintSublabel: string | null = null;
@@ -709,6 +712,7 @@ export function ASBlock({ block, ...props }: ASBlockProps) {
 						]
 					: block.hint;
 			return (
+				<div>
 				<Collapsible>
 					<CollapsibleTrigger asChild>
 						<div
@@ -727,6 +731,8 @@ export function ASBlock({ block, ...props }: ASBlockProps) {
 						))}
 					</CollapsibleContent>
 				</Collapsible>
+				{binding && <ConnectorApp binding={binding} />}
+				</div>
 			);
 		}
 		case 'tool_call_group': {

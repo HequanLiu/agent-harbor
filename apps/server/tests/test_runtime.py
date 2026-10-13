@@ -7,7 +7,8 @@ from harbor.workspaces import TenantWorkspaceManager
 from test_auth import register
 
 
-def test_real_agent_session_isolation_and_persistence(tmp_path):
+def test_real_agent_session_isolation_and_persistence(tmp_path, monkeypatch):
+    monkeypatch.setenv("HARBOR_WORKSPACE_MODE", "trusted_single_user_local")
     app = create_harbor_app(tmp_path)
     with TestClient(app) as alice, TestClient(app) as bob:
         a = register(alice)
@@ -45,7 +46,8 @@ def test_real_agent_session_isolation_and_persistence(tmp_path):
         assert session_id in restarted.get('/sessions/', params={'agent_id': agent_id}).text
 
 
-def test_explicit_workspace_ids_cannot_share_across_owners(tmp_path):
+def test_explicit_workspace_ids_cannot_share_across_owners(tmp_path, monkeypatch):
+    monkeypatch.setenv("HARBOR_WORKSPACE_MODE", "trusted_single_user_local")
     async def check():
         async with TenantWorkspaceManager(tmp_path) as manager:
             a = await manager.get_workspace('tenant_a_user', 'same_agent', 'a', 'same_workspace')

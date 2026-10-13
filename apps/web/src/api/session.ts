@@ -110,6 +110,7 @@ export const sessionApi = {
 		sessionId: string,
 		agentId: string,
 		signal?: AbortSignal,
+		onConnected?: () => void,
 	): AsyncGenerator<AgentEvent> {
 		const res = await client.stream(`/sessions/${sessionId}/stream`, {
 			method: 'GET',
@@ -118,6 +119,7 @@ export const sessionApi = {
 		});
 
 		const reader = res.body!.getReader();
+		onConnected?.();
 		const decoder = new TextDecoder();
 		let buffer = '';
 
