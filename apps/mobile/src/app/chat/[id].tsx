@@ -22,6 +22,8 @@ import { defaultChat } from "../../core/default-chat";
 import { useConversation } from "../../chat/useConversation";
 import { colors, IconButton, Notice, styles } from "../../components/ui";
 import type { Message } from "../../core/types";
+import { ConnectorAppButton } from '../../connector-ui/ConnectorAppButton';
+import { getBinding } from '../../connector-ui/protocol';
 export default function Chat() {
   const params = useLocalSearchParams<{
     id: string;
@@ -184,9 +186,10 @@ export default function Chat() {
             renderItem={({ item }) => {
               const own = item.role === "user";
               const text = item.content
-                .filter((b) => b.type === "text")
-                .map((b) => b.text || "")
+                .filter((b) => b.type === "text" || (b.type === 'tool_result' && getBinding(b)))
+                .map((b) => b.type === 'text' ? b.text || '' : typeof b.output === 'string' ? b.output : b.output?.filter(x => x.type === 'text').map(x => x.text || '').join('\n') || '')
                 .join("\n");
+              const bindings = item.content.map(getBinding).filter(b => b !== null);
               return (
                 <View
                   style={{
@@ -219,6 +222,7 @@ export default function Chat() {
                         {chat.running ? "正在思考…" : "此消息包含工具或附件内容，请在桌面端查看。"}
                       </Text>
                     )}
+                    {bindings.map(binding => <ConnectorAppButton key={binding.binding_token} binding={binding} agentId={params.agentId || ''} sessionId={params.id || ''} send={chat.send} busy={chat.running || chat.pending} />)}
                   </View>
                 </View>
               );

@@ -130,6 +130,7 @@ class InboxMiddleware(MiddlewareBase):  # pylint: disable=abstract-method
                     block_id=hint.id,
                     source=hint.source,
                     hint=hint.hint,
+                    metadata=hint.metadata,
                 )
 
         async for evt in next_handler(**input_kwargs):

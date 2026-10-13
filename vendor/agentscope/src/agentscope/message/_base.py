@@ -377,6 +377,7 @@ class Msg(BaseModel):
                     id=event.block_id,
                     source=event.source,
                     hint=event.hint,
+                    metadata=event.metadata,
                 )
                 hint_block.finished_at = hint_block.created_at
                 self.content.append(hint_block)

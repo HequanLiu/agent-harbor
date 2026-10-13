@@ -110,6 +110,8 @@ class HintBlock(BaseModel):
 
     type: Literal["hint"] = "hint"
     """The type of the hint block, which is always 'hint'."""
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    """Host-only metadata, excluded from the hint sent to the model."""
     hint: str | list[TextBlock | DataBlock]
     """The hint content — plain text or a list of content blocks for
     multimodal data."""

@@ -22,10 +22,13 @@ operator (see `.env.example`; never commit real values):
 - `HARBOR_CONNECTOR_PUBLIC_URL`: Harbor's public API origin. Register
   `<origin>/harbor/connectors/oauth/callback` with the OAuth provider. HTTPS is
   required except for this loopback development callback.
-- `HARBOR_CONNECTOR_BRIDGE_KEYS`: server-only JSON map from exact MCP resource URL
-  to the separate trusted human-confirmation bridge key. Only the fixed MES
-  `/drafts/{id}/confirm` route adds this header; tools and general proxy calls do
-  not receive it. Never put this key in a package, frontend or workspace config.
+- `HARBOR_CONNECTOR_BRIDGE_KEYS`: server-only JSON map to the separate trusted
+  human-confirmation bridge key. MCP Apps approvals require an explicitly trusted
+  connector instance ID as the map key; legacy confirmation uses the exact MCP
+  resource URL. The legacy MES
+  confirmation route and the generic MCP Apps native approval flow use this
+  server-side key. Ordinary UI tool calls do not receive it. Never put this key
+  in a package, frontend or workspace config.
 
 OAuth uses discovery, public client registration, PKCE S256, a one-use state and
 an HttpOnly SameSite=Lax callback cookie. The original Harbor session and active
@@ -124,6 +127,94 @@ This prevents host file reads and arbitrary formatter URL fetches. Restart
 Harbor when enabling this deployment; do not retain old host-local tool processes.
 
 ## UI and API
+
+### Connector-owned MCP Apps
+
+New interactive tools attach standard `_meta.ui.resourceUri` metadata, for
+example `ui://crm/opportunity/v1`, and serve a self-contained HTML resource with
+MIME type `text/html;profile=mcp-app`. The connector owns its fields, validation,
+styles and responsive layout. Harbor hosts the official MCP Apps bridge; adding
+another business form does not require a Harbor renderer or business route.
+Keep ordinary text content in every tool result for clients without Apps support.
+Use `structuredContent` for the application's initial data. App-only helper tools
+declare `_meta.ui.visibility: ["app"]`; model-only tools use `["model"]`.
+
+Harbor records the actual connector, caller, chat, input and raw tool result when
+the tool executes. Chat events/history carry an opaque `connector_ui` binding.
+Opening an app exchanges that binding for a short-lived session; browser-supplied
+connector IDs, arbitrary URLs and resource substitutions are not accepted.
+Revocation or removing a connector from the current chat invalidates its UI calls.
+Reopening the UI does not rerun the original business tool.
+
+Set `HARBOR_CONNECTOR_UI_SANDBOX_ORIGIN` to an origin different from the web
+application. It must route `/harbor/connector-ui/sandbox/*` to the Harbor backend.
+For local Vite on port 5177, the API origin on port 8017 is suitable. For a
+same-origin production web/API deployment, provision a separate sandbox origin.
+Use HTTPS in production. The sandbox URL carries a short-lived, scoped ticket;
+do not cache it or include it in analytics. It does not carry an OAuth token.
+For physical phones, this origin must be reachable from the phone; a loopback
+address points to the phone itself. Restart Harbor after changing this setting.
+
+The outer sandbox relays protocol messages; the connector HTML runs in an inner
+iframe without same-origin permission. CSP comes from the resource's declared
+`_meta.ui.csp` and defaults to no network access. Bundle scripts and styles into
+the resource where possible. Uploaded files and business requests should use MCP
+tools, with the backend retaining connector credentials. The UI cannot access
+Harbor cookies, the top-level DOM or the native mobile bridge.
+
+The `examples` field in `connector-meta.json` may contain up to eight short prompts.
+Examples are business-owned package content; omit them to use the generic
+connector prompt. No particular connector source or skill name is required.
+
+Generic endpoints are under `/harbor/connector-ui`:
+
+| Route | Purpose |
+| --- | --- |
+| POST `/sessions` | Exchange `{binding_token, agent_id, session_id}` for an owned UI session |
+| POST `/sessions/{id}/rpc` | Bound `resources/read` and allowed `tools/call` JSON-RPC requests |
+| DELETE `/sessions/{id}` | Close the UI session |
+| GET `/sandbox/{ticket}` | Ticket-scoped isolated relay document |
+| POST `/approvals/{id}/decision` | Native host submits strict `{approved: boolean}` for a saved one-use challenge |
+
+Approval is a Harbor extension, not a standard MCP Apps requirement. A prepare
+tool declares `_meta["harbor/approval"]: {prepareTool, executeTool}`. Harbor saves
+the prepared operation and arguments, displays its summary outside connector
+HTML, and signs execution only after a native decision. The UI cannot replace
+the saved arguments or call the declared execute tool directly. The MES service
+verifies the receipt, identity, current version and its durable workflow state.
+Configure the same key on the connector and under its installed instance ID in
+`HARBOR_CONNECTOR_BRIDGE_KEYS`; origin-wide trust does not enable new Apps approval.
+Cancelling consumes the challenge; errors do not automatically replay execution.
+
+The mobile application bundles a trusted SDK shell generated with
+`cd apps/web` followed by `pnpm build:connector-mobile`. Regenerate after changing
+the shared host implementation, then rebuild the Expo app to include the native
+WebView and Crypto dependencies. Native API credentials stay outside the WebView;
+requests require a per-instance nonce, bound UI session and current login.
+`scripts/smoke_mcp_native.py` exercises this exact bundle with an emulated native
+bridge in Chromium; actual WebView acceptance is still separate.
+
+Hosts without the Harbor approval extension can edit and validate MES drafts;
+final submission fails closed. An independently authenticated connector approval
+page is not implemented yet. Existing legacy forms remain available during this
+migration. Their server routes are isolated in `legacy_mes.py`.
+
+The MES app is developed and built in the connector repository
+`D:\WorkProject\mes.project\mes.clothes.mcp\ui`; the packaged resource is
+`src/mes_mcp/assets/order-editor.html`. Rebuild that artifact after changing its
+React source. Serving stale HTML will not be fixed by restarting Harbor.
+
+Browser acceptance uses `scripts/smoke_mcp_sandbox.py` for actual two-origin
+isolation and `scripts/smoke_mcp_apps.py` for the official SDK with an independent
+CRM fixture and the actual MES HTML bundle. Set `PYTHONPATH` to
+`apps/server;vendor/agentscope/src`, use a Python environment with Playwright,
+FastAPI and Uvicorn, and run an isolated Vite instance on port 5188 for the latter.
+The second script accepts the Vite URL and MES repository path as positional
+arguments. Business responses are fixtures; these checks never submit a real
+order or make a model request. A phone-sized browser viewport does not verify
+native iOS/Android WebView behavior.
+
+### Legacy compatibility
 
 `/connectors` provides import, authorization, discovered tools,
 disconnect and removal. Connected MES connectors link to the order editor at

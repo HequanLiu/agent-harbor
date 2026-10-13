@@ -17,6 +17,8 @@ import { ReadRenderer } from './ReadRenderer';
 import { TaskCreateRenderer } from './TaskCreateRenderer';
 import type { TFunction, ToolCallWithResult, ToolRenderer } from './types';
 import { WriteRenderer } from './WriteRenderer';
+import { ConnectorApp } from '@/components/connector-ui/ConnectorApp';
+import { connectorBinding } from '@/lib/connector-app';
 import { mesDraftSnapshot } from '@/lib/mes-draft-link';
 
 const renderers: Record<string, ToolRenderer> = {
@@ -53,6 +55,7 @@ export function renderToolCall(pair: ToolCallWithResult, t: TFunction): ReactNod
 	const r = getRenderer(pair.call.name);
 	const header = r.renderHeader?.(pair, t) ?? defaultRenderHeader(pair, t);
 	const body = r.renderBody?.(pair, t) ?? defaultRenderBody(pair, t);
-	const draft = mesDraftSnapshot(pair.call.name, getResultText(pair.result), pair.result?.state);
-	return <div key={pair.call.id}><ToolCallRow pair={pair} header={header} body={body} />{draft && <MesDraftLink key={draft.draft_id} draftId={draft.draft_id} initialDraft={draft} />}</div>;
+	const binding = connectorBinding(pair.result);
+	const draft = !binding && mesDraftSnapshot(pair.call.name, getResultText(pair.result), pair.result?.state);
+	return <div key={pair.call.id}><ToolCallRow pair={pair} header={header} body={body} />{binding && <ConnectorApp binding={binding} />}{draft && <MesDraftLink key={draft.draft_id} draftId={draft.draft_id} initialDraft={draft} />}</div>;
 }

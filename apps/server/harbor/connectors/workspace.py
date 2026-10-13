@@ -18,6 +18,8 @@ class ConnectorMCPClient(MCPClient):
     _owner=PrivateAttr()
     _tenant=PrivateAttr()
     _connector=PrivateAttr()
+    _agent=PrivateAttr(default=None)
+    _chat=PrivateAttr(default=None)
 
     def bind(self,oauth,network,tenant,owner,cid):
         self._oauth,self._network,self._tenant,self._owner,self._connector=oauth,network,tenant,owner,cid
@@ -26,23 +28,49 @@ class ConnectorMCPClient(MCPClient):
     def _create_http_client(self):
         return self._connector_transport()
 
+    async def list_raw_tools(self):
+        from .ui_bridge import invoke, wire
+        result = await invoke(self._oauth, self._network, self._tenant, self._owner, self._connector, 'tools/list', {})
+        self._cached_tools = result.tools
+        tools = [t for t in result.tools if (self.enable_tools is None or t.name in self.enable_tools) and t.name not in (self.disable_tools or [])]
+        self._oauth.store.tools(self._tenant, self._owner, self._connector, [wire(t) for t in tools])
+        return tools
+
+    async def list_tools(self):
+        from .ui_bridge import visible
+        return [await self.get_tool(t.name) for t in await self.list_raw_tools() if visible(t, 'model')]
+
+    async def get_tool(self, name):
+        from .ui_bridge import visible
+        if self._cached_tools is None: await self.list_raw_tools()
+        target = next((t for t in self._cached_tools if t.name == name), None)
+        if any((t.meta or {}).get('harbor/approval', {}).get('executeTool') == name for t in self._cached_tools):
+            raise ValueError('Tool requires a native approval decision')
+        if target is None or name in (self.disable_tools or []) or (self.enable_tools is not None and name not in self.enable_tools) or not visible(target, 'model'):
+            raise ValueError('Tool is not available to the model')
+        from .ui_tool import ConnectorTool
+        return ConnectorTool(self, target)
+
     @asynccontextmanager
-    async def _connector_transport(self):
+    async def _connector_transport(self, *, headers=None):
         token=await self._oauth.access(self._tenant,self._owner,self._connector)
         # Use trusted database config, not a workspace file that the model can edit.
         row=self._oauth.store.get(self._tenant,self._owner,self._connector)
         url=self._network.check(row['package']['mcp']['url'])
         async with self._network.client(self.mcp_config.timeout) as client:
             client.headers['Authorization']='Bearer '+token
+            if headers: client.headers.update(headers)
             async with streamable_http_client(url=url,http_client=client) as transport:
                 yield transport
 
 
-def make_client(oauth,network,tenant,owner,cid):
+def make_client(oauth,network,tenant,owner,cid,*,agent=None,session=None):
     package=oauth.store.get(tenant,owner,cid)['package']
-    return ConnectorMCPClient(name=PREFIX+cid,is_stateful=False,
+    client = ConnectorMCPClient(name=PREFIX+cid,is_stateful=False,
         mcp_config=HttpMCPConfig(url=package['mcp']['url'],timeout=package['mcp']['timeout_seconds']),
         disable_tools=package['mcp']['disabled_tools']).bind(oauth,network,tenant,owner,cid)
+    client._agent, client._chat = agent, session
+    return client
 
 
 class ConnectorWorkspaces:
@@ -74,7 +102,7 @@ class ConnectorWorkspaces:
             clients=await original_mcps(agent_id=agent_id,session_id=session_id)
             allowed=set(manager.store.bindings(tenant,owner,agent_id or '',session_id or ''))
             return [c for c in clients if not c.name.startswith(PREFIX)]+[
-                make_client(manager.oauth,manager.network,tenant,owner,cid)
+                make_client(manager.oauth,manager.network,tenant,owner,cid,agent=agent_id,session=session_id)
                 for cid in sorted(allowed) if manager.store.grant(tenant,owner,cid)]
         async def add_mcp(this,client,**kwargs):
             if client.name.startswith(PREFIX):raise ValueError('Reserved connector name')

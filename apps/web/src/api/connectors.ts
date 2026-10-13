@@ -4,6 +4,7 @@ import { apiBaseUrl, apiFetch } from '@/lib/desktop';
 
 export interface ConnectorTool { name: string; description?: string }
 export interface Connector {
+  examples?: string[];
   id: string;
   source: string;
   name: string;

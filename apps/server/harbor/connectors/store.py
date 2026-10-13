@@ -88,7 +88,7 @@ class ConnectorStore:
         return {'id':row['id'],'source':meta['source'],'name':meta.get('name',meta['source']),
                 'description':meta.get('description',''),'version':meta['version'],'sha256':package['sha256'],
                 'status':'connected' if row['connected'] else 'installed','skills':list(package['skills']),
-                'tools':row['tools'],'url':package['mcp']['url']}
+                'tools':row['tools'],'url':package['mcp']['url'],'examples':meta.get('examples',[])}
 
     def list(self, tenant, owner):
         with self.db() as db:

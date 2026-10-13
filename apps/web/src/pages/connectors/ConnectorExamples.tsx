@@ -20,11 +20,7 @@ function ExamplesContent({ connector, enabled }: { connector: Connector; enabled
   const [error, setError] = useState('');
   const inFlight = useRef(false);
   const agentId = selected || agents.find(agent => agent.id === localStorage.getItem('chat_last_agent'))?.id || agents[0]?.id;
-  const examples = connector.source === 'dresscode-mes' ? [
-    '帮我查询最近的订单，整理订单状态和交期。',
-    '我想录入一笔订单，请引导我提供资料，并生成订单草稿供我确认。',
-    '我想修改已有订单，请先询问订单编号和修改内容，再生成修改草稿供我确认。',
-  ] : [
+  const examples = connector.examples?.length ? connector.examples : [
     `介绍一下 ${connector.name} 可以帮我完成哪些操作，并给出使用建议。`,
     `查看 ${connector.name} 的可用工具，告诉我执行这些操作需要提供哪些信息。`,
   ];

@@ -45,6 +45,10 @@ def read_package(content: bytes) -> dict:
         raise ValueError("缺少或损坏的连接器配置") from exc
     if not isinstance(meta, dict) or not isinstance(config, dict):
         raise ValueError("连接器配置必须为对象")
+    examples = meta.get('examples', [])
+    if (not isinstance(examples, list) or len(examples) > 8
+            or any(not isinstance(value, str) or not value.strip() or len(value) > 1000 for value in examples)):
+        raise ValueError('连接器示例必须为最多 8 条非空文本，每条不超过 1000 字符')
     for field,limit in (('source',80),('version',40),('name',160),('description',2000)):
         if field in meta and (not isinstance(meta[field],str) or len(meta[field])>limit):
             raise ValueError('Connector metadata must contain bounded text values')
@@ -92,8 +96,6 @@ def read_package(content: bytes) -> dict:
             skills[match[1]] = text
         elif name.startswith("skills/"):
             raise ValueError("首版只加载声明的 SKILL.md，不执行包内脚本")
-    if meta["source"] == "dresscode-mes" and "mes-order" not in skills:
-        raise ValueError("MES 连接器必须包含订单 Skill")
     return {"metadata": meta, "mcp": {"url": item["url"], "type": "http_mcp",
             "timeout_seconds": timeout / 1000, "disabled_tools": disabled},
             "skills": skills, "sha256": hashlib.sha256(content).hexdigest()}

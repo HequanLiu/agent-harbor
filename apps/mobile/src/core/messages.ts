@@ -25,6 +25,14 @@ export function applyEvent(state: ChatState, event: AgentEvent): ChatState {
   }
   const id = event.reply_id;
   if (!id) return next;
+  if (event.type === 'HINT_BLOCK') {
+    if (!next.messages.some(m => m.id === id)) next.messages = [...next.messages, { id, role: 'assistant', content: [] }];
+    next.messages = next.messages.map(m => m.id !== id ? m : {
+      ...m, content: [...m.content.filter(b => b.id !== event.block_id), {
+        id: event.block_id, type: 'hint', hint: event.hint, source: event.source, metadata: event.metadata,
+      }],
+    });
+  }
   if (event.type === "REPLY_START") {
     next = { ...next, running: true, pending: false, error: undefined };
     if (!next.messages.some((m) => m.id === id))
@@ -65,9 +73,18 @@ export function applyEvent(state: ChatState, event: AgentEvent): ChatState {
     });
     next = { ...next, running: true, pending: true };
   }
-  if (["TOOL_RESULT_START", "TOOL_RESULT_END"].includes(event.type)) {
-    next.messages = next.messages.map((m) => m.id !== id ? m : {
-      ...m, content: m.content.map((b) => b.type === "tool_call" && b.id === event.tool_call_id ? { ...b, state: "finished" } : b),
+  if (["TOOL_RESULT_START", "TOOL_RESULT_TEXT_DELTA", "TOOL_RESULT_END"].includes(event.type) && event.tool_call_id) {
+    if (!next.messages.some(m => m.id === id)) next.messages = [...next.messages, { id, role: 'assistant', content: [] }];
+    next.messages = next.messages.map(m => {
+      if (m.id !== id) return m;
+      const content = m.content.map(b => b.type === 'tool_call' && b.id === event.tool_call_id ? { ...b, state: 'finished' } : b);
+      const index = content.findIndex(b => b.type === 'tool_result' && b.id === event.tool_call_id);
+      const previous = index >= 0 ? content[index] : undefined;
+      const output = event.type === 'TOOL_RESULT_TEXT_DELTA' ? (typeof previous?.output === 'string' ? previous.output : '') + (event.delta || '') : previous?.output || '';
+      const result = { ...previous, id: event.tool_call_id, type: 'tool_result', output,
+        state: event.type === 'TOOL_RESULT_END' ? event.state || 'finished' : 'running', metadata: event.metadata ?? previous?.metadata };
+      if (index < 0) content.push(result); else content[index] = result;
+      return { ...m, content };
     });
     next.pending = hasPendingTool(next.messages);
   }

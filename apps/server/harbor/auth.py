@@ -1,6 +1,7 @@
 """Same-origin cookie authentication and tenant boundary, without buffering SSE."""
 from collections import defaultdict, deque
 from pathlib import Path
+import re
 import threading
 import time
 from urllib.parse import parse_qsl, urlencode
@@ -91,7 +92,12 @@ class AuthBoundary:
                 ('GET', '/harbor/connectors/oauth/browser'),
                 ('POST', '/harbor/connectors/oauth/browser'),
             }
-            if (request.method, path) not in public:
+            # This narrow GET uses its own short-lived UI-session ticket. The
+            # route rechecks ownership and connector grants, never ambient cookies.
+            sandbox_ticket_request = request.method == 'GET' and re.fullmatch(
+                r'/harbor/connector-ui/sandbox/[A-Za-z0-9_-]{43}', path,
+            ) is not None
+            if (request.method, path) not in public and not sandbox_ticket_request:
                 token = request.cookies.get(COOKIE, '')
                 if 'authorization' in request.headers:
                     scheme, _, token = request.headers['authorization'].partition(' ')

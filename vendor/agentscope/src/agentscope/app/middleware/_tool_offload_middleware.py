@@ -335,6 +335,10 @@ class ToolOffloadMiddleware(MiddlewareBase):  # pylint: disable=abstract-method
                     source=hint_source,
                 )
 
+            # Keep host UI associations outside model-visible hint content.
+            if response is not None:
+                hint.metadata = deepcopy(response.metadata)
+
             # Deliver via inbox + wakeup — same path as a team message.
             # InboxMiddleware drains the inbox into context on the next
             # reasoning step, and WakeupDispatcher kicks an idle session

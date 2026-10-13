@@ -12,9 +12,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Button } from "../ui/button";
 import { ASMessageBubble } from "@/components/chat/ASMessageBubble.tsx";
 import { ConfirmCard } from "@/components/chat/ConfirmCard.tsx";
+import { ConnectorSelector } from "@/components/chat/ConnectorSelector";
 import { FlipCard } from "@/components/chat/FlipCard.tsx";
 import { TextInput } from "@/components/chat/TextInput.tsx";
-import { ConnectorSelector } from "@/components/chat/ConnectorSelector";
+import { ConnectorChatContext } from '@/components/connector-ui/context';
 import { WorkingDirectoryDialog } from "@/components/dialog/WorkingDirectoryDialog";
 import {
   Alert,
@@ -163,6 +164,7 @@ const ChatContentComponent: React.FC<ChatContentProps> = ({
   // On an empty session the prompt and the input centre together, so every box
   // down to the message list shrinks to its content instead of filling.
   return (
+    <ConnectorChatContext.Provider value={{agentId,sessionId,busy:phase !== "idle",send:text=>onSend([{id:crypto.randomUUID(),type:"text",text,created_at:new Date().toISOString()}])}}>
     <div
       className={cn(
         "flex flex-col h-full w-full items-center gap-4",
@@ -320,6 +322,7 @@ const ChatContentComponent: React.FC<ChatContentProps> = ({
         </div>
       )}
     </div>
+    </ConnectorChatContext.Provider>
   );
 };
 
